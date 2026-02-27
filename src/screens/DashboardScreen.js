@@ -166,6 +166,9 @@ const DashboardScreen = ({ navigation }) => {
                                             resizeMode="cover"
                                         />
                                         <Text style={styles.historyDate}>{formatDate(menu.date || menu.createdAt)}</Text>
+                                        {menu.note && menu.note.trim() !== '' && (
+                                            <Text style={styles.historyNote} numberOfLines={1}>{menu.note}</Text>
+                                        )}
                                     </View>
                                 ))}
                             </ScrollView>
@@ -431,6 +434,14 @@ const styles = StyleSheet.create({
         color: '#6e7a6f',
         fontWeight: '600',
         textAlign: 'center',
+    },
+    historyNote: {
+        fontSize: 12,
+        color: '#2F7631',
+        marginTop: 4,
+        fontWeight: '500',
+        textAlign: 'center',
+        paddingHorizontal: 4,
     },
     logoutButton: {
         marginHorizontal: 24,
