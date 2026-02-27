@@ -6,6 +6,8 @@ import { BASE_URL } from '../config';
 
 const LoginScreen = ({ navigation }) => {
     const [mobileNumber, setMobileNumber] = useState('');
+    const [name, setName] = useState('');
+    const [hotelName, setHotelName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSendOTP = async () => {
@@ -22,8 +24,12 @@ const LoginScreen = ({ navigation }) => {
             });
 
             if (response.data.success) {
-                // Navigate to OTPScreen
-                navigation.navigate('OTP', { mobileNumber });
+                // Show the OTP in an alert since we don't have SMS setup
+                Alert.alert(
+                    'OTP Sent!',
+                    `Your OTP is: ${response.data.otp}`,
+                    [{ text: 'OK', onPress: () => navigation.navigate('OTP', { mobileNumber, name, hotelName, incomingOtp: response.data.otp }) }]
+                );
             } else {
                 Alert.alert('Error', response.data.message || 'Failed to send OTP');
             }
@@ -57,6 +63,28 @@ const LoginScreen = ({ navigation }) => {
 
                         <Text style={styles.title}>Hotel Login</Text>
                         <Text style={styles.subtitle}>Access your booking and management dashboard</Text>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Full Name (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Your Name"
+                                value={name}
+                                onChangeText={setName}
+                                placeholderTextColor="#A0A0A0"
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Hotel Name (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Grand Plaza"
+                                value={hotelName}
+                                onChangeText={setHotelName}
+                                placeholderTextColor="#A0A0A0"
+                            />
+                        </View>
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Mobile Number</Text>

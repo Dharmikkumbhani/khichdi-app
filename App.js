@@ -8,6 +8,7 @@ import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import OTPScreen from './src/screens/OTPScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import AddMenuScreen from './src/screens/AddMenuScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,7 +34,10 @@ const AppNav = () => {
           </>
         ) : (
           // Authenticated Stack
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <>
+            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="AddMenu" component={AddMenuScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

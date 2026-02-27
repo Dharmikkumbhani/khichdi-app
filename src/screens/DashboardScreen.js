@@ -1,31 +1,61 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import { BASE_URL } from '../config';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const DashboardScreen = () => {
+const DashboardScreen = ({ navigation }) => {
     const { logout } = useContext(AuthContext);
     const [profile, setProfile] = useState(null);
+    const [latestMenu, setLatestMenu] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchProfile = async () => {
+        const fetchData = async () => {
             try {
+                // Fetch profile
                 const res = await axios.get(`${BASE_URL}/hotel/dashboard`);
                 if (res.data.success) {
                     setProfile(res.data.hotel);
                 }
+
+                // Fetch latest menu
+                const menuRes = await axios.get(`${BASE_URL}/menu/history`);
+                if (menuRes.data.success && menuRes.data.menus.length > 0) {
+                    setLatestMenu(menuRes.data.menus[0]);
+                }
             } catch (error) {
-                console.log("Error fetching profile", error);
+                console.log("Error fetching data", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchProfile();
+        fetchData();
     }, []);
+
+    const refreshDashboard = async () => {
+        setLoading(true);
+        try {
+            const menuRes = await axios.get(`${BASE_URL}/menu/history`);
+            if (menuRes.data.success && menuRes.data.menus.length > 0) {
+                setLatestMenu(menuRes.data.menus[0]);
+            }
+        } catch (error) {
+            console.log("Error refreshing menu", error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // refresh when focused
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshDashboard();
+        });
+        return unsubscribe;
+    }, [navigation]);
 
     return (
         <View style={styles.container}>
@@ -40,21 +70,46 @@ const DashboardScreen = () => {
 
             <View style={styles.content}>
                 <View style={styles.card}>
-                    {loading ? (
+                    {loading && !profile ? (
                         <ActivityIndicator size="large" color="#2F7631" />
                     ) : profile ? (
                         <>
                             <View style={styles.profileIcon}>
                                 <Text style={styles.profileIconText}>🏨</Text>
                             </View>
-                            <Text style={styles.welcomeText}>Welcome Back!</Text>
+                            <Text style={styles.welcomeText}>Welcome {profile.name || 'Back'}!</Text>
+                            <Text style={styles.detailText}>{profile.hotelName || 'My Hotel'}</Text>
                             <Text style={styles.detailText}>Mobile: {profile.mobileNumber}</Text>
-                            <Text style={styles.detailText}>Role: {profile.role}</Text>
+
+                            {latestMenu && (
+                                <View style={styles.latestMenuContainer}>
+                                    <Text style={styles.menuTitle}>Today's Menu</Text>
+                                    <View style={styles.menuImageContainer}>
+                                        <Image
+                                            source={{ uri: latestMenu.imageUrl }}
+                                            style={styles.menuImage}
+                                            resizeMode="cover"
+                                        />
+                                    </View>
+                                </View>
+                            )}
                         </>
                     ) : (
                         <Text>Failed to load profile</Text>
                     )}
                 </View>
+
+                <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => navigation.navigate('AddMenu')}
+                >
+                    <LinearGradient
+                        colors={['#2F7631', '#215c23']}
+                        style={styles.buttonGradient}
+                    >
+                        <Text style={styles.addText}>+ Add Daily Menu Photo</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
 
                 <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                     <Text style={styles.logoutText}>Logout</Text>
@@ -123,6 +178,29 @@ const styles = StyleSheet.create({
         color: '#6e7a6f',
         marginBottom: 5,
     },
+    latestMenuContainer: {
+        marginTop: 20,
+        alignItems: 'center',
+        width: '100%'
+    },
+    menuTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#2F7631',
+        marginBottom: 10
+    },
+    menuImageContainer: {
+        width: '100%',
+        height: 200,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#e0ece0'
+    },
+    menuImage: {
+        width: '100%',
+        height: '100%'
+    },
     logoutButton: {
         backgroundColor: '#ffebeb',
         paddingVertical: 15,
@@ -133,6 +211,22 @@ const styles = StyleSheet.create({
     },
     logoutText: {
         color: '#d32f2f',
+        fontSize: 16,
+        fontWeight: 'bold'
+    },
+    addButton: {
+        width: '100%',
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 15
+    },
+    buttonGradient: {
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    addText: {
+        color: '#fff',
         fontSize: 16,
         fontWeight: 'bold'
     }

@@ -6,10 +6,16 @@ import { BASE_URL } from '../config';
 import { AuthContext } from '../context/AuthContext';
 
 const OTPScreen = ({ route, navigation }) => {
-    const { mobileNumber } = route.params;
+    const { mobileNumber, name, hotelName, incomingOtp } = route.params;
     const { login } = useContext(AuthContext);
 
-    const [otp, setOtp] = useState(['', '', '', '', '']); // Assuming 5 digit OTP from backend
+    // Initialize the OTP state with the incoming OTP if provided (splits string into array of 5)
+    // Otherwise fallback to 5 empty strings
+    const initialOtpState = incomingOtp
+        ? incomingOtp.split('').slice(0, 5)
+        : ['', '', '', '', ''];
+
+    const [otp, setOtp] = useState(initialOtpState);
     const [isLoading, setIsLoading] = useState(false);
     const [timer, setTimer] = useState(300); // 5 minutes (300 seconds)
     const inputRefs = useRef([]);
@@ -62,7 +68,9 @@ const OTPScreen = ({ route, navigation }) => {
         try {
             const response = await axios.post(`${BASE_URL}/auth/verify-otp`, {
                 mobileNumber,
-                otp: otpCode
+                otp: otpCode,
+                name,
+                hotelName
             });
 
             if (response.data.success) {
