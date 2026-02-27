@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-    Image, Alert, ScrollView, Platform
+    Image, Alert, ScrollView, Platform, TextInput
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from '../context/AuthContext';
@@ -17,6 +17,7 @@ const DashboardScreen = () => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [menuHistory, setMenuHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [note, setNote] = useState('');
 
     useEffect(() => {
         fetchProfile();
@@ -105,6 +106,10 @@ const DashboardScreen = () => {
                 type: type,
             });
 
+            if (note.trim()) {
+                formData.append('note', note.trim());
+            }
+
             const res = await axios.post(`${BASE_URL}/menu/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -112,6 +117,7 @@ const DashboardScreen = () => {
             if (res.data.success) {
                 Alert.alert('Success! 🎉', 'Today\'s menu has been uploaded successfully! It will now appear on the website.');
                 setSelectedImage(null);
+                setNote('');
                 fetchMenuHistory(); // Refresh history
             }
         } catch (error) {
@@ -187,6 +193,16 @@ const DashboardScreen = () => {
                         </View>
                     )}
 
+                    <TextInput
+                        style={styles.noteInput}
+                        placeholder="Add a note (e.g. Today's special: Paneer Thali) 📝"
+                        placeholderTextColor="#9ca3af"
+                        value={note}
+                        onChangeText={setNote}
+                        multiline
+                        maxLength={200}
+                    />
+
                     <TouchableOpacity
                         style={[styles.uploadButton, uploading && styles.uploadButtonDisabled]}
                         onPress={uploadMenu}
@@ -223,11 +239,15 @@ const DashboardScreen = () => {
                                             day: 'numeric', month: 'short', year: 'numeric'
                                         })}
                                     </Text>
-                                    <Text style={styles.historyTime}>
-                                        {new Date(menu.date).toLocaleTimeString('en-IN', {
-                                            hour: '2-digit', minute: '2-digit'
-                                        })}
-                                    </Text>
+                                    {menu.note ? (
+                                        <Text style={styles.historyNote} numberOfLines={1}>{menu.note}</Text>
+                                    ) : (
+                                        <Text style={styles.historyTime}>
+                                            {new Date(menu.date).toLocaleTimeString('en-IN', {
+                                                hour: '2-digit', minute: '2-digit'
+                                            })}
+                                        </Text>
+                                    )}
                                 </View>
                             </View>
                         ))
@@ -436,6 +456,24 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#9ca3af',
         marginTop: 2,
+    },
+    historyNote: {
+        fontSize: 13,
+        color: '#2F7631',
+        marginTop: 2,
+        fontWeight: '500',
+    },
+    noteInput: {
+        backgroundColor: '#f8faf8',
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#d5ecd5',
+        padding: 14,
+        fontSize: 14,
+        color: '#1a1f1a',
+        marginBottom: 16,
+        minHeight: 50,
+        textAlignVertical: 'top',
     },
     logoutButton: {
         backgroundColor: '#ffebeb',
