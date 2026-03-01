@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator, Alert, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator, Alert, StatusBar, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { BASE_URL } from '../config';
 
 const ProfileScreen = ({ navigation }) => {
@@ -12,10 +13,12 @@ const ProfileScreen = ({ navigation }) => {
     const [address, setAddress] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
+    const [photos, setPhotos] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -33,6 +36,11 @@ const ProfileScreen = ({ navigation }) => {
                 setAddress(h.address || '');
                 setLatitude(h.latitude ? h.latitude.toString() : '');
                 setLongitude(h.longitude ? h.longitude.toString() : '');
+                if (h.photos && h.photos.length > 0) {
+                    setPhotos(h.photos);
+                } else if (h.imageUrl) {
+                    setPhotos([h.imageUrl]);
+                }
             }
         } catch (error) {
             console.log("Error fetching profile", error);
@@ -40,6 +48,74 @@ const ProfileScreen = ({ navigation }) => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handlePickAndUploadImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            selectionLimit: 5,
+            quality: 0.7,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            uploadImages(result.assets);
+        }
+    };
+
+    const uploadImages = async (assets) => {
+        setIsUploadingPhoto(true);
+        try {
+            const formData = new FormData();
+            assets.forEach((asset, index) => {
+                formData.append('hotelImages', {
+                    uri: asset.uri,
+                    name: `hotel_${Date.now()}_${index}.jpg`,
+                    type: 'image/jpeg',
+                });
+            });
+
+            const res = await axios.post(`${BASE_URL}/hotel/upload-photos`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (res.data.success) {
+                setPhotos(res.data.photos);
+                Alert.alert("Success", "Hotel photos updated successfully!");
+            } else {
+                Alert.alert("Error", res.data.message || "Failed to upload photos");
+            }
+        } catch (error) {
+            console.log("Upload error:", error);
+            Alert.alert("Error", "Could not upload the photos. Please try again.");
+        } finally {
+            setIsUploadingPhoto(false);
+        }
+    };
+
+    const handleDeletePhoto = async (photoUrl) => {
+        Alert.alert("Delete Photo", "Are you sure you want to delete this photo?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete", style: "destructive", onPress: async () => {
+                    try {
+                        const res = await axios.delete(`${BASE_URL}/hotel/photo`, {
+                            data: { photoUrl }
+                        });
+                        if (res.data.success) {
+                            setPhotos(res.data.photos);
+                            Alert.alert("Success", "Photo deleted!");
+                        } else {
+                            Alert.alert("Error", res.data.message || "Failed to delete photo");
+                        }
+                    } catch (error) {
+                        Alert.alert("Error", "Could not delete photo.");
+                    }
+                }
+            }
+        ]);
     };
 
     const handleGetLocation = async () => {
@@ -140,6 +216,36 @@ const ProfileScreen = ({ navigation }) => {
                 >
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         <View style={styles.card}>
+
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.sectionTitle}>🖼️ Hotel Image Gallery</Text>
+                                <Text style={styles.sectionSubtitle}>Upload multiple photos to showcase your hotel</Text>
+                                <View style={styles.photoUploadContainer}>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 10, paddingRight: 20 }}>
+                                        {photos.map((photo, index) => (
+                                            <View key={index} style={styles.photoWrapper}>
+                                                <Image source={{ uri: photo }} style={styles.profileImage} />
+                                                <TouchableOpacity
+                                                    style={styles.photoDeleteBadge}
+                                                    onPress={() => handleDeletePhoto(photo)}>
+                                                    <Text style={styles.photoDeleteText}>✕</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+
+                                        <TouchableOpacity onPress={handlePickAndUploadImage} style={[styles.photoWrapper, styles.addPhotoWrapper]} disabled={isUploadingPhoto}>
+                                            {isUploadingPhoto ? (
+                                                <ActivityIndicator size="large" color="#2F7631" />
+                                            ) : (
+                                                <View style={styles.photoPlaceholder}>
+                                                    <Text style={styles.photoPlaceholderIcon}>➕</Text>
+                                                    <Text style={styles.photoPlaceholderText}>Add Photos</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    </ScrollView>
+                                </View>
+                            </View>
 
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Hotel Name</Text>
@@ -312,6 +418,74 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1a1f1a',
         marginBottom: 8,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#166534',
+        marginBottom: 4,
+    },
+    sectionSubtitle: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginBottom: 12,
+    },
+    photoUploadContainer: {
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    photoWrapper: {
+        width: 140,
+        height: 100,
+        borderRadius: 16,
+        backgroundColor: '#f1f8f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#e0ece0',
+        overflow: 'visible', // allows the edit badge to bleed outside a bit if needed
+    },
+    addPhotoWrapper: {
+        borderStyle: 'dashed',
+    },
+    profileImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
+    },
+    photoDeleteBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#dc2626',
+        borderRadius: 14,
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    photoDeleteText: {
+        fontSize: 10,
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    photoPlaceholder: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    photoPlaceholderIcon: {
+        fontSize: 28,
+        marginBottom: 4,
+    },
+    photoPlaceholderText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#2F7631',
     },
     input: {
         borderWidth: 1,
