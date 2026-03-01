@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { BASE_URL } from '../config';
+import { AuthContext } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
     const [mobileNumber, setMobileNumber] = useState('');
     const [name, setName] = useState('');
     const [hotelName, setHotelName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { login } = useContext(AuthContext);
 
-    const handleSendOTP = async () => {
+    const handleLogin = async () => {
         // Basic validation
         if (!mobileNumber || mobileNumber.length < 10) {
             Alert.alert('Invalid Input', 'Please enter a valid mobile number');
@@ -19,19 +21,17 @@ const LoginScreen = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            const response = await axios.post(`${BASE_URL}/auth/send-otp`, {
-                mobileNumber
+            const response = await axios.post(`${BASE_URL}/auth/direct-login`, {
+                mobileNumber,
+                name,
+                hotelName
             });
 
             if (response.data.success) {
-                // Show the OTP in an alert since we don't have SMS setup
-                Alert.alert(
-                    'OTP Sent!',
-                    `Your OTP is: ${response.data.otp}`,
-                    [{ text: 'OK', onPress: () => navigation.navigate('OTP', { mobileNumber, name, hotelName, incomingOtp: response.data.otp }) }]
-                );
+                // Directly login using the token
+                login(response.data.token);
             } else {
-                Alert.alert('Error', response.data.message || 'Failed to send OTP');
+                Alert.alert('Error', response.data.message || 'Failed to login');
             }
         } catch (error) {
             Alert.alert('Error', error.response?.data?.message || 'Server error, please try again later');
@@ -100,7 +100,7 @@ const LoginScreen = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={styles.button}
-                            onPress={handleSendOTP}
+                            onPress={handleLogin}
                             disabled={isLoading}
                         >
                             <LinearGradient
@@ -110,7 +110,7 @@ const LoginScreen = ({ navigation }) => {
                                 {isLoading ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <Text style={styles.buttonText}>Send OTP</Text>
+                                    <Text style={styles.buttonText}>Login</Text>
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>

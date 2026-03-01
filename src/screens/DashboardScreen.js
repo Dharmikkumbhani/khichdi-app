@@ -84,8 +84,8 @@ const DashboardScreen = ({ navigation }) => {
                                 <Text style={styles.greeting}>{getGreeting()},</Text>
                                 <Text style={styles.hotelName}>{profile.hotelName || 'My Hotel'}</Text>
                             </View>
-                            <TouchableOpacity style={styles.profileIcon} onPress={logout}>
-                                <Text style={styles.profileIconText}>{profile.hotelName ? profile.hotelName.charAt(0).toUpperCase() : 'H'}</Text>
+                            <TouchableOpacity style={styles.profileIcon} onPress={() => navigation.navigate('Profile')}>
+                                <Text style={styles.profileIconText}>{profile.hotelName ? profile.hotelName.charAt(0).toUpperCase() : '👤'}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
